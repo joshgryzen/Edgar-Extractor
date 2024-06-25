@@ -1,5 +1,7 @@
 from sec_edgar_downloader import Downloader
 from gooey import Gooey
+from tkinter import messagebox
+import tkinter as tk
 import argparse
 
 
@@ -8,7 +10,11 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-c", "--companies", required=True, nargs="+", help="A list of company tickers"
+        "-c",
+        "--companies",
+        required=True,
+        nargs="+",
+        help="A list of company tickers separated by spaces, ie: AMZN CLH META",
     )
 
     parser.add_argument(
@@ -25,7 +31,7 @@ def main():
         required=False,
         type=int,
         default=2014,
-        help="The starting year as an integer",
+        help="The starting year as an integer, ie: 2014",
     )
 
     parser.add_argument(
@@ -34,7 +40,7 @@ def main():
         required=False,
         type=int,
         default=2024,
-        help="The ending year as an integer",
+        help="The ending year as an integer. Must be greater than the starting year, ie: 2024",
     )
 
     args = vars(parser.parse_args())
@@ -43,6 +49,15 @@ def main():
     form = args["form"]
     start = args["start"]
     end = args["end"]
+
+    if start > end:
+        root = tk.Tk()
+        root.withdraw()
+        tk.messagebox.showwarning(
+            "Input Error!",
+            f"Ending year cannot be before starting year.",
+        )
+        return
 
     # List of company tickers
     # companies = [
