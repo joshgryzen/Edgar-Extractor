@@ -1,8 +1,9 @@
-from sec_edgar_downloader import Downloader
+from sec_downloader import Downloader
+from sec_downloader.types import RequestedFilings
 from gooey import Gooey
-from tkinter import messagebox
-import tkinter as tk
 import argparse
+from bs4 import BeautifulSoup
+import os
 
 
 @Gooey
@@ -26,71 +27,60 @@ def main():
     )
 
     parser.add_argument(
-        "-s",
-        "--start",
+        "-l",
+        "--limit",
         required=False,
         type=int,
-        default=2014,
-        help="The starting year as an integer, ie: 2014",
-    )
-
-    parser.add_argument(
-        "-e",
-        "--end",
-        required=False,
-        type=int,
-        default=2024,
-        help="The ending year as an integer. Must be greater than the starting year, ie: 2024",
+        default=10,
+        help="The limit for the number of most recent documents.",
     )
 
     args = vars(parser.parse_args())
 
     companies = args["companies"]
     form = args["form"]
-    start = args["start"]
-    end = args["end"]
+    limit = args["limit"]
 
-    if start > end:
-        root = tk.Tk()
-        root.withdraw()
-        tk.messagebox.showwarning(
-            "Input Error!",
-            f"Ending year cannot be before starting year.",
-        )
-        return
+    if not os.path.exists(os.path.join("sec-edgar-filings")):
+        os.mkdir("sec-edgar-filings")
 
     # List of company tickers
-    # companies = [
-    #     "CLH",
-    #     "DY",
-    #     "EME",
-    #     "FIX",
-    #     "FSS",
-    #     "HUBB",
-    #     "MTZ",
-    #     "PRIM",
-    #     "RBC",
-    #     "ROAD",
-    #     "SPXC",
-    #     "STRL",
-    # ]
-
     for company in companies:
+
+        if not os.path.exists(os.path.join("sec-edgar-filings", company)):
+            os.mkdir(os.path.join("sec-edgar-filings", company))
 
         dl = Downloader(
             "Gryzen Financial Group, LLC",
             "gryzencoaching@gmail.com",
         )
 
-        # Set to 10 years
-        for year in range(start, end):
-            dl.get(
-                form,
-                company,
-                after=f"{year}-01-01",
-                before=f"{year+1}-01-01",
-                # download_details=False,
+        metadatas = dl.get_filing_metadatas(
+            RequestedFilings(
+                form_type=form,
+                ticker_or_cik=company,
+                limit=limit,
             )
+        )
+
+        for metadata in metadatas:
+            print(metadata, end="\n\n")
+
+            html = dl.download_filing(url=metadata.primary_doc_url).decode()
+            path = os.path.join("sec-edgar-filings", company)
+            out_path = os.path.join(
+                path,
+                company + "-" + form + "-" + metadata.filing_date + ".txt",
+            )
+            with open(
+                out_path,
+                "w",
+                encoding="utf-8",
+            ) as text_file:
+                soup = BeautifulSoup(html, "html.parser")
+                text = soup.get_text()
+                text_file.write(text)
 
 
-main()
+if __name__ == "__main__":
+    main()
